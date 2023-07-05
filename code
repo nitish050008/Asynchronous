@@ -1,1 +1,70 @@
+Main class
+------------
 
+//first we need to mark main springboot application with annotation
+
+@EnableAsync  //--- which enable to perform the asynchronous method in background
+
+//then we need to annotate the methode with @Async annotation on the method which we want to be executed parallely
+
+//One more thing is that the method which we want to execute parallely or annotated with @Async should be Public
+
+
+
+
+@Bean("asyncMethod")
+publice TaskExecutor getAsysncExecutor(){
+	ThreadPoolTaskExecutor obj= new ThreadPoolTaskExecutor(); //ThreadPoolTaskExecutor class it allow us to create the pool and the pool has n number of thread we can use that thread to our method seperatly
+	obj.setCorePoolSize(20); //Set the ThreadPoolExecutor's core pool size
+	obj.setMaxPoolSize(1000); //Set the ThreadPoolExecutor's maximum pool size
+	obj.setWaitForTasksToCompleteOnShutdown(true);
+	obj.setThreadNamePrefix("Async-"); // this only to see thread name
+	return obj; 
+}
+
+service layer // service class
+---------
+
+//we will write the method to be executed in seprated thread in parallel
+//then we need to annotate the methode with @Async annotation on the method which we want to be executed parallely
+
+@Async("asyncMethod") // this name should be same as we created the bean in main class
+public void getDetails(){
+	try{
+		
+		
+		Thread.sleep(10000);   //it will make sleep for 10 sec
+		
+		//CustomerRespository annotated with @Autowired and Customer is the entity name present in database
+
+		List<Customer> list = customerRepository.findAll(); // it will extract the customer details from the data base and we want that it should be executed in seperated thread for that only i have annonated with @Async
+		list.forEach(x -> {
+			System.out.println(x);
+		});
+	}
+	catch(InterruptedException e){ // as it is sleep method so we need to write Interrupted Exception in catch block.
+		e.printStackTrace();
+	}
+}
+
+
+controller class/API layer
+----------------------
+
+class annotated with
+@RestController
+@RequestMapping("/pathname-customer")
+
+inside class 
+------
+suppose we need to execute thelist after each new customer is added then method will be as follows
+
+@PostMapping("/pathname-addcustomer")
+public ResponseEntity<Customer> addCustomer(@RequestBody Customer customer){
+	Customer createCustomer = customerSerivice.save(customer);  // customerService is annotated with @Autowired
+	customerService.getDetails(); // as this menthod is annotated with @Async so this will be invoked parallely and will be executed
+	return new ResponseEntity<>(createCustomer, HttpStatus.CREATED);
+
+}
+
+//So when we execute what will happen here that first new data will be saved and then parallely it will extract data from the database and will print the required details and after that only response will be retrun as created.
